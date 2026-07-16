@@ -1,0 +1,1426 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ระบบยืม–คืนอุปกรณ์</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@500;600;700&family=Sarabun:wght@400;500;600&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<script src="https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js"></script>
+<style>
+  :root{
+    --bg:#1B1E24; --surface:#242830; --surface2:#2E333D; --surface3:#363C47;
+    --accent:#F5A623; --accent-dim:#C9860F; --accent-text:#3A2604;
+    --good:#4ADE80; --good-text:#0B3A1E; --bad:#F87171; --bad-text:#4A0E0E;
+    --text:#ECEAE4; --text-dim:#9CA3AF; --text-faint:#6B7280;
+    --border:#3A3F4A; --border-soft:#2E333D;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:'Sarabun',sans-serif;line-height:1.6;}
+  .wrap{max-width:820px;margin:0 auto;padding:2.5rem 1.5rem 4rem;}
+  .eyebrow{font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.14em;color:var(--accent);text-transform:uppercase;margin:0 0 .5rem;}
+  h1{font-family:'Kanit',sans-serif;font-weight:700;font-size:32px;margin:0 0 .35rem;letter-spacing:.01em;}
+  .sub{color:var(--text-dim);font-size:15px;margin:0 0 2rem;max-width:600px;}
+  .section-head{display:flex;align-items:baseline;justify-content:space-between;margin:0 0 1rem;}
+  .section-head h2{font-family:'Kanit',sans-serif;font-size:17px;font-weight:600;margin:0;}
+  .section-head span{font-size:12.5px;color:var(--text-faint);font-family:'JetBrains Mono',monospace;}
+  .addbar{display:flex;gap:8px;margin-bottom:1.25rem;}
+  .addbar input{flex:1;}
+  .addbar button{white-space:nowrap;background:var(--surface2);border:1px solid var(--border);color:var(--text-dim);border-radius:8px;padding:0 .9rem;font-family:'Sarabun',sans-serif;font-size:13.5px;cursor:pointer;}
+  .addbar button:hover{color:var(--text);border-color:var(--text-faint);}
+  label{display:block;font-size:12.5px;color:var(--text-dim);margin:.9rem 0 .35rem;font-weight:500;}
+  input{width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:.6rem .7rem;font-family:'Sarabun',sans-serif;font-size:14.5px;outline:none;transition:border-color .15s;}
+  input:focus{border-color:var(--accent);}
+  input::placeholder{color:var(--text-faint);}
+  .code-input{font-family:'JetBrains Mono',monospace;letter-spacing:.03em;}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-bottom:2.25rem;}
+  .card{background:var(--surface);border:1px solid var(--border-soft);border-radius:12px;padding:.95rem 1rem;position:relative;cursor:pointer;text-align:left;transition:border-color .15s,transform .1s;}
+  .card:hover{border-color:var(--text-faint);}
+  .card:active{transform:scale(.98);}
+  .card::after{content:'';position:absolute;top:12px;right:12px;width:8px;height:8px;border-radius:50%;}
+  .card.avail::after{background:var(--good);}
+  .card.out::after{background:var(--bad);}
+  .card .code{font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--text-faint);letter-spacing:.03em;}
+  .card .name{font-family:'Kanit',sans-serif;font-weight:500;font-size:15.5px;margin:.15rem 0 .5rem;padding-right:16px;}
+  .card .status{font-size:12px;color:var(--text-dim);}
+  .card .status b{color:var(--text);font-weight:500;}
+  .card .status.avail-text{color:#7BE3A3;}
+  .empty{color:var(--text-faint);font-size:13.5px;padding:1.2rem 0;grid-column:1/-1;}
+  .backbtn{background:none;border:none;color:var(--text-dim);font-size:14px;cursor:pointer;padding:0;margin-bottom:1.25rem;font-family:'Sarabun',sans-serif;}
+  .backbtn:hover{color:var(--text);}
+  .detail-card{background:var(--surface);border:1px solid var(--border-soft);border-radius:16px;padding:1.75rem 1.75rem 2rem;text-align:center;}
+  .detail-head p.code{font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--text-faint);margin:0;letter-spacing:.03em;}
+  .detail-head h2{font-family:'Kanit',sans-serif;font-size:22px;font-weight:600;margin:.2rem 0 1.4rem;}
+  .hint{font-size:13px;color:var(--text-faint);max-width:360px;margin:0 auto 1.2rem;}
+  .cam-frame{background:#000;border-radius:12px;overflow:hidden;max-width:360px;margin:0 auto;aspect-ratio:4/3;display:flex;align-items:center;justify-content:center;}
+  .cam-frame video, .cam-frame img, .cam-frame canvas{width:100%;height:100%;object-fit:cover;display:block;}
+  .cam-frame.empty-frame{border:1px dashed var(--border);background:var(--surface2);color:var(--text-faint);font-size:13px;}
+  .cam-actions{display:flex;gap:8px;max-width:360px;margin:1rem auto 0;}
+  .cam-actions button.action{margin:0;}
+  button.action{width:100%;max-width:320px;margin:1rem auto 0;display:block;border:none;border-radius:8px;padding:.75rem;font-family:'Kanit',sans-serif;font-weight:600;font-size:14.5px;cursor:pointer;letter-spacing:.02em;background:var(--accent);color:var(--accent-text);transition:transform .1s;}
+  button.action:active{transform:scale(.98);}
+  button.action.ghost{background:var(--surface2);color:var(--text-dim);}
+  .msg{margin:1rem auto 0;max-width:360px;padding:.65rem .8rem;border-radius:8px;font-size:13px;display:none;line-height:1.5;text-align:left;}
+  .msg.show{display:block;}
+  .msg.ok{background:rgba(74,222,128,.12);border:1px solid rgba(74,222,128,.35);color:#B5F0CB;}
+  .msg.err{background:rgba(248,113,113,.12);border:1px solid rgba(248,113,113,.35);color:#F7B9B9;}
+  #form-block{max-width:320px;margin:1.25rem auto 0;text-align:left;}
+  .sub-form{max-width:320px;margin:1.25rem auto 0;text-align:left;}
+  .borrowed-info{padding:.5rem 0 .5rem;}
+  .borrowed-info p{margin:0;font-size:12.5px;color:var(--text-faint);}
+  .borrowed-info p.overdue{color:#F7B9B9;font-weight:600;}
+  .borrowed-info h3{font-family:'Kanit',sans-serif;font-size:22px;font-weight:600;margin:.3rem 0;}
+  .borrowed-photo{max-width:220px;margin:0 auto 1rem;border-radius:12px;overflow:hidden;}
+  .borrowed-photo img{width:100%;display:block;}
+  .evidence-note{font-size:11.5px;color:var(--text-faint);margin-top:.5rem !important;}
+  .checkbox-row{display:flex;align-items:flex-start;gap:8px;font-size:13.5px;color:var(--text-dim);cursor:pointer;margin:.9rem 0 .35rem;}
+  .checkbox-row input{width:auto;flex:none;margin-top:2px;accent-color:var(--accent);}
+  .checkbox-row span{flex:1;}
+  input[type="file"]{padding:.45rem .5rem;font-size:13px;color:var(--text-dim);}
+  .history{border:1px solid var(--border-soft);border-radius:10px;overflow:hidden;}
+  .hrow{display:flex;align-items:center;gap:10px;padding:.6rem .9rem;font-size:13px;border-bottom:1px solid var(--border-soft);}
+  .hrow:last-child{border-bottom:none;}
+  .hrow .htag{font-family:'JetBrains Mono',monospace;font-size:10.5px;padding:2px 7px;border-radius:5px;font-weight:600;letter-spacing:.03em;background:rgba(74,222,128,.14);color:#7BE3A3;}
+  .hrow .htxt{color:var(--text-dim);flex:1;}
+  .hrow .htxt b{color:var(--text);font-weight:500;}
+  .hrow .htime{color:var(--text-faint);font-family:'JetBrains Mono',monospace;font-size:11px;}
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;padding:1.25rem;z-index:100;}
+  .modal-overlay.show{display:flex;}
+  .modal-card{background:var(--surface);border:1px solid var(--border-soft);border-radius:16px;padding:1.5rem;max-width:400px;width:100%;max-height:85vh;overflow-y:auto;}
+  .modal-card h3{font-family:'Kanit',sans-serif;font-size:19px;font-weight:600;margin:0 0 1rem;}
+  .modal-row{margin:0 0 .85rem;}
+  .modal-row .label{font-size:12px;color:var(--text-faint);font-family:'JetBrains Mono',monospace;letter-spacing:.03em;text-transform:uppercase;margin:0 0 .2rem;}
+  .modal-row .value{font-size:14.5px;color:var(--text);}
+  .modal-row .value.small{font-size:13px;color:var(--text-dim);}
+  .modal-evidence{border-radius:10px;overflow:hidden;margin-top:.3rem;}
+  .modal-evidence img{width:100%;display:block;border-radius:10px;}
+  .modal-close{width:100%;margin-top:.5rem;background:var(--surface2);border:1px solid var(--border);color:var(--text-dim);border-radius:8px;padding:.7rem;font-family:'Kanit',sans-serif;font-weight:600;font-size:14px;cursor:pointer;}
+  .modal-close:hover{color:var(--text);border-color:var(--text-faint);}
+  .booking-row{display:flex;align-items:center;gap:8px;padding:.55rem .75rem;font-size:12.5px;border:1px solid var(--border-soft);border-radius:8px;margin-bottom:6px;}
+  .booking-row .btxt{flex:1;color:var(--text-dim);}
+  .booking-row .btxt b{color:var(--text);font-weight:500;}
+  .booking-row .bdate{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-faint);display:block;margin-top:1px;}
+  .booking-row button{background:none;border:none;color:var(--bad);font-size:12px;cursor:pointer;padding:0;white-space:nowrap;}
+  .booking-empty{color:var(--text-faint);font-size:12.5px;padding:.3rem 0 .8rem;}
+  .booking-row.due{border-color:var(--accent);background:rgba(245,166,35,.08);}
+  .booking-row .claim-btn{color:var(--accent);font-weight:600;}
+  .cal-widget{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:.75rem;margin:.35rem 0 .9rem;}
+  .cal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem;font-family:'Kanit',sans-serif;font-size:13.5px;font-weight:600;}
+  .cal-nav{background:none;border:none;color:var(--text-dim);font-size:17px;cursor:pointer;padding:2px 10px;line-height:1;}
+  .cal-nav:hover{color:var(--text);}
+  .cal-dow-row{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-bottom:3px;}
+  .cal-dow{display:flex;align-items:center;justify-content:center;font-size:10.5px;line-height:1;color:var(--text-faint);font-family:'JetBrains Mono',monospace;}
+  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);grid-template-rows:repeat(6,1fr);gap:3px;height:220px;}
+  .cal-day{display:flex;align-items:center;justify-content:center;font-size:12px;line-height:1;border-radius:6px;cursor:pointer;color:var(--text-dim);background:var(--surface3);}
+  .cal-day.cal-blank{visibility:hidden;cursor:default;}
+  .cal-day.past{color:var(--text-faint);background:transparent;cursor:not-allowed;opacity:.4;}
+  .cal-day.busy{background:rgba(248,113,113,.28);color:#F7B9B9;cursor:not-allowed;font-weight:600;}
+  .cal-day.today{box-shadow:inset 0 0 0 1px var(--accent);}
+  .cal-day.selected{background:var(--accent);color:var(--accent-text);font-weight:700;}
+  .cal-day.in-range{background:rgba(245,166,35,.28);color:var(--text);}
+  .cal-day:hover:not(.busy):not(.past):not(.empty){box-shadow:inset 0 0 0 1px var(--text-faint);}
+  .cal-legend{display:flex;gap:14px;margin-top:.6rem;font-size:11px;color:var(--text-dim);}
+  .cal-legend .dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:4px;vertical-align:middle;}
+  .cal-legend .dot.busy{background:#F87171;}
+  .cal-legend .dot.sel{background:var(--accent);}
+  .cal-selected{font-size:12px;color:var(--text-dim);margin:.5rem 0 0;}
+  #login-gate{max-width:380px;margin:4rem auto 0;text-align:center;}
+  #login-gate .ms-icon{width:44px;height:44px;margin:0 auto 1rem;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:2px;}
+  #login-gate .ms-icon span{display:block;}
+  #login-gate .ms-icon span:nth-child(1){background:#F25022;}
+  #login-gate .ms-icon span:nth-child(2){background:#7FBA00;}
+  #login-gate .ms-icon span:nth-child(3){background:#00A4EF;}
+  #login-gate .ms-icon span:nth-child(4){background:#FFB900;}
+  #login-gate h2{font-family:'Kanit',sans-serif;font-size:19px;font-weight:600;margin:0 0 .5rem;}
+  #login-gate p{color:var(--text-dim);font-size:13.5px;margin:0 0 1.4rem;}
+  #login-gate .msg{max-width:320px;margin-left:auto;margin-right:auto;}
+  .user-badge{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--text-dim);margin:0 0 1.5rem;}
+  .user-badge b{color:var(--text);font-weight:500;}
+  .user-badge button{margin-left:auto;background:none;border:1px solid var(--border);color:var(--text-faint);border-radius:6px;padding:.3rem .6rem;font-size:11.5px;cursor:pointer;font-family:'Sarabun',sans-serif;}
+  .user-badge button:hover{color:var(--text);border-color:var(--text-faint);}
+  .sync-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--good);margin-right:5px;vertical-align:middle;}
+  .sync-dot.err{background:var(--bad);}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div id="login-gate">
+    <div class="ms-icon"><span></span><span></span><span></span><span></span></div>
+    <h2>เข้าสู่ระบบด้วย Microsoft 365</h2>
+    <p>ระบบนี้เก็บข้อมูลไว้บน OneDrive ของบัญชีทีมที่ใช้ร่วมกัน กรุณาเข้าสู่ระบบด้วยบัญชี Microsoft (ทีม) เพื่อใช้งาน</p>
+    <button class="action" id="login-btn" onclick="handleLoginClick()">เข้าสู่ระบบด้วย Microsoft 365</button>
+    <div id="login-msg" class="msg"></div>
+  </div>
+
+  <div id="app-root" style="display:none;">
+  <p class="eyebrow">ระบบควบคุมทรัพย์สิน</p>
+  <div class="user-badge">
+    <span><span class="sync-dot" id="sync-dot"></span><span id="sync-status">ซิงก์ข้อมูลแล้ว</span></span>
+    <span>·</span>
+    <span>เข้าสู่ระบบเป็น <b id="current-user-name">-</b></span>
+    <button onclick="handleLogoutClick()">ออกจากระบบ</button>
+  </div>
+
+  <h1>ยืม–คืนอุปกรณ์</h1>
+  <p class="sub">เลือกอุปกรณ์ที่ต้องการยืม ระบบจะขอเปิดกล้องให้ถ่ายรูปก่อน แล้วค่อยพาไปหน้ากรอกฟอร์มยืม</p>
+
+  <div id="view-home">
+    <div class="section-head"><h2>อุปกรณ์ทั้งหมด</h2><span id="count-badge"></span></div>
+    <div class="addbar">
+      <input id="new-code" class="code-input" placeholder="รหัส เช่น CAM-02" style="max-width:150px;">
+      <input id="new-name" placeholder="ชื่ออุปกรณ์ เช่น กล้อง DSLR">
+      <button onclick="addEquipment()">+ เพิ่มอุปกรณ์</button>
+    </div>
+    <div class="addbar">
+      <input id="new-checklist" placeholder="รายการเช็คตอนคืน คั่นด้วย , เช่น เลนส์, ฝาปิดเลนส์, housing (ไม่จำเป็นต้องกรอก)">
+    </div>
+    <div id="grid" class="grid"></div>
+
+    <div class="section-head"><h2>ประวัติล่าสุด</h2></div>
+    <div id="history" class="history"></div>
+  </div>
+
+  <div id="view-detail" style="display:none;">
+    <button class="backbtn" onclick="goHome()">← กลับหน้ารายการ</button>
+    <div class="detail-card">
+      <div class="detail-head">
+        <p class="code" id="d-code"></p>
+        <h2 id="d-name"></h2>
+      </div>
+
+      <div id="d-booking-block" class="sub-form" style="max-width:340px;text-align:left;">
+        <div class="section-head" style="margin:0 0 .5rem;">
+          <h2 style="font-size:14px;">จองล่วงหน้า</h2>
+        </div>
+        <p class="hint" style="margin:0 0 .8rem;max-width:none;">จองช่วงวันที่ล่วงหน้าไว้ก่อน แล้วค่อยกลับมายืมจริง (ถ่ายรูป) ในวันที่ต้องการใช้</p>
+        <div id="booking-list"></div>
+        <label for="booking-name">ชื่อผู้จอง</label>
+        <input id="booking-name" placeholder="เช่น สมชาย ใจดี">
+        <label>เลือกวันที่ต้องการจอง (สีแดง = ไม่ว่าง)</label>
+        <div class="cal-widget">
+          <div class="cal-head">
+            <button type="button" class="cal-nav" onclick="shiftBookingCalMonth(-1)">‹</button>
+            <span id="cal-month-label"></span>
+            <button type="button" class="cal-nav" onclick="shiftBookingCalMonth(1)">›</button>
+          </div>
+          <div class="cal-dow-row" id="cal-dow-row"></div>
+          <div class="cal-grid" id="cal-grid"></div>
+          <div class="cal-legend">
+            <span><i class="dot busy"></i>ไม่ว่าง</span>
+            <span><i class="dot sel"></i>ช่วงที่เลือก</span>
+          </div>
+          <p class="cal-selected" id="cal-selected-text">ยังไม่ได้เลือกวันที่</p>
+        </div>
+        <input type="hidden" id="booking-start">
+        <input type="hidden" id="booking-end">
+        <button class="action ghost" onclick="addBooking()">+ จองอุปกรณ์ล่วงหน้า</button>
+        <div id="booking-msg" class="msg"></div>
+      </div>
+
+      <div id="d-available-block">
+        <p class="hint" id="cam-hint">กดเปิดกล้องแล้วถ่ายรูปเพื่อเริ่มยืมอุปกรณ์ชิ้นนี้ — ต้องเห็นใบหน้าคนในรูปชัดเจน ระบบจะตรวจสอบก่อนถึงจะให้กรอกฟอร์ม</p>
+        <div class="cam-frame empty-frame" id="cam-frame">ยังไม่ได้เปิดกล้อง</div>
+        <div id="cam-buttons">
+          <button class="action" id="open-cam-btn" onclick="openCamera()">เปิดกล้องถ่ายรูป</button>
+        </div>
+        <div id="shoot-buttons" style="display:none;">
+          <button class="action" onclick="takePhoto()">ถ่ายรูป</button>
+        </div>
+        <div id="review-buttons" class="cam-actions" style="display:none;">
+          <button class="action ghost" style="flex:1;" onclick="retakePhoto()">ถ่ายใหม่</button>
+          <button class="action" id="proceed-to-form-btn" style="flex:1;display:none;" onclick="proceedToForm()">ใช้รูปนี้ ไปกรอกฟอร์ม</button>
+        </div>
+        <div id="cam-msg" class="msg"></div>
+
+        <div id="form-block" style="display:none;">
+          <label for="borrow-name">ชื่อผู้ยืม</label>
+          <input id="borrow-name" placeholder="เช่น สมชาย ใจดี">
+          <label for="borrow-estimate-start">วันที่คาดว่าจะยืม</label>
+          <input id="borrow-estimate-start" type="date">
+          <label for="borrow-estimate-end">วันที่คาดว่าจะคืน</label>
+          <input id="borrow-estimate-end" type="date">
+          <button class="action" onclick="confirmBorrow()">ยืนยันการยืม</button>
+        </div>
+      </div>
+
+      <div id="d-borrowed-block" style="display:none;">
+        <div class="borrowed-info">
+          <p>ถูกยืมโดย</p>
+          <h3 id="d-borrower"></h3>
+          <p id="d-borrowedat"></p>
+          <p id="d-estimate"></p>
+          <p class="evidence-note">📷 มีรูปถ่ายยืนยันตัวตนตอนยืมถูกเก็บไว้เป็นหลักฐาน (ไม่แสดงในหน้านี้)</p>
+        </div>
+
+        <div id="return-block">
+          <p class="hint" id="return-hint">สแกนใบหน้าอีกครั้งเพื่อคืนอุปกรณ์ — ต้องเป็นใบหน้าคนเดียวกับตอนยืม (ตรงกันอย่างน้อย 50%)</p>
+          <div class="cam-frame empty-frame" id="return-cam-frame">ยังไม่ได้เปิดกล้อง</div>
+          <div id="return-cam-buttons">
+            <button class="action" id="open-return-cam-btn" onclick="openReturnCamera()">เปิดกล้องยืนยันตัวตนเพื่อคืน</button>
+          </div>
+          <div id="return-shoot-buttons" style="display:none;">
+            <button class="action" onclick="takeReturnPhoto()">ถ่ายรูปยืนยัน</button>
+          </div>
+          <div id="return-review-buttons" class="cam-actions" style="display:none;">
+            <button class="action ghost" style="flex:1;" onclick="retakeReturnPhoto()">ถ่ายใหม่</button>
+            <button class="action" id="confirm-return-btn" style="flex:1;display:none;" onclick="confirmReturn()">ยืนยันคืนอุปกรณ์</button>
+          </div>
+          <div id="return-msg" class="msg"></div>
+
+          <div id="return-checklist-block" class="sub-form">
+            <label>ตรวจสอบอุปกรณ์ย่อยก่อนคืน</label>
+            <div id="return-checklist-items"></div>
+            <label for="return-evidence-file">แนบไฟล์หลักฐานว่าคืนครบ (เช่น รูปสภาพอุปกรณ์)</label>
+            <input type="file" id="return-evidence-file" accept="image/*,.pdf">
+          </div>
+
+          <button type="button" class="backbtn" id="manual-return-toggle" style="display:block;margin:1rem auto 0;text-align:center;" onclick="toggleManualReturn()">สแกนหน้าไม่ผ่าน? คืนแบบยืนยันด้วยตนเอง</button>
+          <div id="manual-return-block" class="sub-form" style="display:none;">
+            <label for="manual-return-name">พิมพ์ชื่อผู้ยืมเดิมให้ตรงกันเพื่อยืนยัน: <b id="manual-expected-name"></b></label>
+            <input id="manual-return-name" placeholder="พิมพ์ชื่อผู้ยืมให้ตรงกัน">
+            <button class="action ghost" onclick="confirmManualReturn()">ยืนยันคืน (ไม่ผ่านสแกนหน้า)</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="evidence-modal-overlay" onclick="if(event.target===this) closeEvidenceModal()">
+  <div class="modal-card">
+    <h3>รายละเอียดผู้ยืม–คืน</h3>
+    <div class="modal-row">
+      <div class="label">อุปกรณ์</div>
+      <div class="value" id="ev-equipment"></div>
+    </div>
+    <div class="modal-row">
+      <div class="label">ผู้ยืม</div>
+      <div class="value" id="ev-borrower"></div>
+    </div>
+    <div class="modal-row">
+      <div class="label">วันที่ยืม</div>
+      <div class="value small" id="ev-borrowed-at"></div>
+    </div>
+    <div class="modal-row">
+      <div class="label">วันที่คืน</div>
+      <div class="value small" id="ev-returned-at"></div>
+    </div>
+    <div class="modal-row" id="ev-checklist-row" style="display:none;">
+      <div class="label">รายการเช็คที่ยืนยัน</div>
+      <div class="value small" id="ev-checklist"></div>
+    </div>
+    <div class="modal-row" id="ev-borrower-photo-row" style="display:none;">
+      <div class="label">รูปผู้ยืม (ตอนยืม)</div>
+      <div id="ev-borrower-photo"></div>
+    </div>
+    <div class="modal-row" id="ev-returner-photo-row" style="display:none;">
+      <div class="label">รูปผู้คืน (ตอนคืน)</div>
+      <div id="ev-returner-photo"></div>
+    </div>
+    <div class="modal-row">
+      <div class="label">หลักฐานการคืน</div>
+      <div id="ev-evidence"></div>
+    </div>
+    <button class="modal-close" onclick="closeEvidenceModal()">ปิด</button>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+<script>
+// ============================================================
+// CONFIG — ต้องกรอกแค่ค่าเดียวคือ clientId
+//
+// clientId มาจาก "App registration" ใน Azure/Entra — แต่ไม่จำเป็นต้องขอ
+// จาก IT ขององค์กรเลย เพราะสร้างได้ฟรีด้วยบัญชี Microsoft ส่วนตัวของใครก็ได้
+// (ไม่เกี่ยวกับบัญชีทีมที่จะใช้ล็อกอินเข้าแอปนี้จริงๆ):
+//   1) ไปที่ https://entra.microsoft.com (ล็อกอินด้วยบัญชี Microsoft ส่วนตัวก็ได้ ฟรี)
+//   2) Identity > Applications > App registrations > New registration
+//   3) ตั้งชื่ออะไรก็ได้ แล้วเลือก "Accounts in any organizational directory
+//      and personal Microsoft accounts" (multi-tenant) เพื่อให้บัญชีทีม/บัญชีองค์กร
+//      อื่นๆ ล็อกอินผ่านแอปนี้ได้โดยไม่ต้องมีใครใน IT ไปลงทะเบียนอะไรเพิ่ม
+//   4) Authentication > Add a platform > Single-page application (SPA)
+//      ใส่ redirect URI เป็น URL ของหน้านี้ (ต้องตรงกับ CONFIG.redirectUri ด้านล่าง)
+//   5) API permissions > Add a permission > Microsoft Graph > Delegated >
+//      Files.ReadWrite (สิทธิ์นี้ผู้ใช้ยินยอมเองได้ ไม่ต้องรอแอดมินอนุมัติ
+//      เว้นแต่องค์กรปิด user consent ไว้)
+//   6) คัดลอกค่า Application (client) ID มาใส่ด้านล่างนี้
+//
+// authority ใช้ 'common' (multi-tenant) จึงไม่ต้องกรอก tenant ID ขององค์กรเลย
+// ทุกคนแค่มีบัญชี Microsoft (ทีม/งาน/ส่วนตัวก็ได้) ก็ล็อกอินและใช้งานได้ทันที
+// ============================================================
+const CONFIG = {
+  // Azure/Entra App Registration > Overview > Application (client) ID
+  clientId: 'YOUR_CLIENT_ID',
+  // path ของไฟล์ข้อมูลภายใน OneDrive ของบัญชีทีมที่ใช้ล็อกอิน (จะถูกสร้างอัตโนมัติถ้ายังไม่มี)
+  dataFilePath: 'AssetRegistry/asset-registry.json',
+  // URL ของหน้านี้เอง — ต้องตรงกับ Redirect URI ที่ลงทะเบียนไว้ใน Azure AD (แบบ SPA platform)
+  redirectUri: window.location.origin + window.location.pathname,
+  // ความถี่ในการ poll ข้อมูลใหม่จาก OneDrive (มิลลิวินาที)
+  pollIntervalMs: 7000
+};
+// Files.ReadWrite: สิทธิ์อ่าน/เขียนไฟล์ใน OneDrive ของบัญชีที่ล็อกอิน (ไม่ต้องใช้สิทธิ์ SharePoint site)
+const GRAPH_SCOPES = ['Files.ReadWrite'];
+
+let msalInstance = null;
+let currentAccount = null;
+let msalReady = false;
+
+async function initMsal(){
+  msalInstance = new msal.PublicClientApplication({
+    auth: {
+      clientId: CONFIG.clientId,
+      authority: 'https://login.microsoftonline.com/common',
+      redirectUri: CONFIG.redirectUri
+    },
+    cache: { cacheLocation: 'sessionStorage', storeAuthStateInCookie: false }
+  });
+  await msalInstance.initialize();
+  // ครั้งแรกหลังถูก redirect กลับมาจากหน้า login ต้อง handle ให้เรียบร้อยก่อน
+  const redirectResult = await msalInstance.handleRedirectPromise().catch(e => { console.error(e); return null; });
+  if(redirectResult && redirectResult.account){
+    currentAccount = redirectResult.account;
+  } else {
+    const accounts = msalInstance.getAllAccounts();
+    if(accounts.length > 0) currentAccount = accounts[0];
+  }
+  msalReady = true;
+}
+
+async function handleLoginClick(){
+  const btn = document.getElementById('login-btn');
+  const msg = document.getElementById('login-msg');
+  btn.disabled = true;
+  msg.className = 'msg';
+  try{
+    if(CONFIG.clientId === 'YOUR_CLIENT_ID'){
+      throw new Error('ยังไม่ได้ตั้งค่า CONFIG.clientId ในโค้ด — ดูคอมเมนต์ด้านบนไฟล์');
+    }
+    const res = await msalInstance.loginPopup({ scopes: GRAPH_SCOPES });
+    currentAccount = res.account;
+    await enterApp();
+  }catch(e){
+    console.error('login failed', e);
+    msg.textContent = 'เข้าสู่ระบบไม่สำเร็จ: ' + e.message;
+    msg.className = 'msg err show';
+  }finally{
+    btn.disabled = false;
+  }
+}
+
+function handleLogoutClick(){
+  if(!msalInstance || !currentAccount) return;
+  msalInstance.logoutPopup({ account: currentAccount }).catch(e => console.error(e));
+}
+
+async function getGraphToken(){
+  try{
+    const res = await msalInstance.acquireTokenSilent({ scopes: GRAPH_SCOPES, account: currentAccount });
+    return res.accessToken;
+  }catch(e){
+    const res = await msalInstance.acquireTokenPopup({ scopes: GRAPH_SCOPES });
+    return res.accessToken;
+  }
+}
+
+async function graphFetch(path, options = {}){
+  const token = await getGraphToken();
+  return fetch(`https://graph.microsoft.com/v1.0${path}`, {
+    ...options,
+    headers: { 'Authorization': `Bearer ${token}`, ...(options.headers || {}) }
+  });
+}
+
+function setSyncStatus(ok, text){
+  const dot = document.getElementById('sync-dot');
+  const label = document.getElementById('sync-status');
+  if(!dot || !label) return;
+  dot.className = 'sync-dot' + (ok ? '' : ' err');
+  label.textContent = text;
+}
+
+async function enterApp(){
+  document.getElementById('login-gate').style.display = 'none';
+  document.getElementById('app-root').style.display = 'block';
+  document.getElementById('current-user-name').textContent = currentAccount.name || currentAccount.username || '-';
+  await loadState();
+  setInterval(refreshState, CONFIG.pollIntervalMs);
+}
+
+let state = null;
+let selectedCode = null;
+let activeBookingId = null;
+let bookingCalDate = new Date();
+let bookingSelStart = null;
+let bookingSelEnd = null;
+let cameraStream = null;
+let capturedPhoto = null;
+let capturedDescriptor = null;
+let capturedReturnPhoto = null;
+let capturedReturnDescriptor = null;
+const MATCH_THRESHOLD_PERCENT = 50;
+let faceApiReady = false;
+let faceApiLoadingPromise = null;
+
+async function ensureFaceApi(){
+  if(faceApiReady) return true;
+  if(faceApiLoadingPromise) return faceApiLoadingPromise;
+  faceApiLoadingPromise = (async () => {
+    try{
+      if(typeof faceapi === 'undefined') throw new Error('face-api.js ยังไม่โหลด');
+      const MODEL_URL = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js/weights';
+      await Promise.all([
+        faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+        faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+        faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
+      ]);
+      faceApiReady = true;
+      return true;
+    }catch(err){
+      console.error('โหลดโมเดลตรวจจับใบหน้าไม่สำเร็จ', err);
+      return false;
+    }
+  })();
+  return faceApiLoadingPromise;
+}
+
+// Detects a single face in `input` (canvas/image/video) and returns its 128-value
+// face descriptor, or null if no face was found. Used both to verify a face is
+// present, and to compare faces between borrow-time and return-time.
+async function getFaceDescriptor(input){
+  try{
+    const result = await faceapi
+      .detectSingleFace(input, new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.5 }))
+      .withFaceLandmarks()
+      .withFaceDescriptor();
+    return result ? result.descriptor : null;
+  }catch(err){
+    console.error('descriptor error', err);
+    return null;
+  }
+}
+
+// Converts a face-api.js euclidean distance into a 0-100 "similarity" score.
+// distance 0 (identical) -> 100%. This is a simple heuristic, not a calibrated
+// probability — tune MATCH_THRESHOLD_PERCENT / this formula if it's too strict or lax.
+function similarityFromDistance(distance){
+  return Math.max(0, Math.min(100, (1 - distance) * 100));
+}
+
+function defaultState(){
+  return {
+    equipment: [
+      {code:'CAM-01', name:'กล้อง DSLR', status:'available', borrower:null, borrowedAt:null, photo:null, faceDescriptor:null, estimatedBorrowDate:null, estimatedReturnDate:null, checklistItems:['เลนส์','ฝาปิดเลนส์','ตัวกล้อง (Housing)','แบตเตอรี่','สายชาร์จ'], bookings:[]},
+      {code:'PROJ-01', name:'โปรเจคเตอร์', status:'available', borrower:null, borrowedAt:null, photo:null, faceDescriptor:null, estimatedBorrowDate:null, estimatedReturnDate:null, checklistItems:['รีโมท','สายไฟ','สาย HDMI'], bookings:[]},
+      {code:'NB-01', name:'โน้ตบุ๊ก', status:'available', borrower:null, borrowedAt:null, photo:null, faceDescriptor:null, estimatedBorrowDate:null, estimatedReturnDate:null, checklistItems:['สายชาร์จ','เม้าส์'], bookings:[]},
+      {code:'MIC-01', name:'ไมโครโฟนไร้สาย', status:'available', borrower:null, borrowedAt:null, photo:null, faceDescriptor:null, estimatedBorrowDate:null, estimatedReturnDate:null, checklistItems:['ตัวรับสัญญาณ','ถ่าน/แบตเตอรี่'], bookings:[]},
+      {code:'TRI-01', name:'ขาตั้งกล้อง', status:'available', borrower:null, borrowedAt:null, photo:null, faceDescriptor:null, estimatedBorrowDate:null, estimatedReturnDate:null, checklistItems:['หัวขาตั้ง (Head)','กระเป๋าใส่'], bookings:[]}
+    ],
+    history: []
+  };
+}
+
+// path ของไฟล์ข้อมูลใน OneDrive ของบัญชีที่ล็อกอินอยู่ (บัญชีทีมที่ใช้ร่วมกัน)
+const DATA_ITEM_PATH = `/me/drive/root:/${CONFIG.dataFilePath}`;
+let lastKnownETag = null;
+let isSaving = false;
+
+async function loadState(){
+  try{
+    const res = await graphFetch(`${DATA_ITEM_PATH}:/content`);
+    if(res.status === 404){
+      // ยังไม่มีไฟล์ข้อมูล — สร้างไฟล์เริ่มต้น
+      state = defaultState();
+      await saveState();
+    }else if(!res.ok){
+      throw new Error(`โหลดข้อมูลจาก OneDrive ไม่สำเร็จ (HTTP ${res.status})`);
+    }else{
+      state = await res.json();
+      const meta = await graphFetch(DATA_ITEM_PATH);
+      if(meta.ok){ const metaJson = await meta.json(); lastKnownETag = metaJson.eTag; }
+    }
+    setSyncStatus(true, 'ซิงก์ข้อมูลแล้ว');
+  }catch(e){
+    console.error('loadState failed', e);
+    setSyncStatus(false, 'โหลดข้อมูลไม่สำเร็จ — ตรวจสอบการตั้งค่า OneDrive');
+    state = state || defaultState();
+  }
+  renderHome();
+}
+
+// เรียกเป็นระยะเพื่อดึงข้อมูลล่าสุดจาก OneDrive (near real-time ผ่านการ poll)
+// เช็ค ETag ก่อนทุกครั้งเพื่อไม่ต้องโหลดไฟล์ซ้ำถ้ายังไม่มีใครแก้ไข
+async function refreshState(){
+  if(isSaving) return; // อย่าเพิ่ง refresh ระหว่างกำลังบันทึกของตัวเอง
+  try{
+    const meta = await graphFetch(DATA_ITEM_PATH);
+    if(!meta.ok){ setSyncStatus(false, 'เชื่อมต่อ OneDrive ไม่ได้'); return; }
+    const metaJson = await meta.json();
+    if(metaJson.eTag === lastKnownETag){
+      setSyncStatus(true, 'ซิงก์ข้อมูลแล้ว');
+      return; // ไม่มีการเปลี่ยนแปลงจากคนอื่น
+    }
+    const res = await graphFetch(`${DATA_ITEM_PATH}:/content`);
+    if(!res.ok) return;
+    state = await res.json();
+    lastKnownETag = metaJson.eTag;
+    setSyncStatus(true, 'มีการอัปเดตข้อมูลใหม่');
+    // อัปเดตหน้าจอโดยไม่รบกวนสิ่งที่ผู้ใช้กำลังทำอยู่ (เช่น กล้องที่เปิดค้างอยู่)
+    renderHome();
+    if(selectedCode && document.getElementById('view-detail').style.display !== 'none'){
+      renderDetail();
+    }
+  }catch(e){
+    console.error('refreshState failed', e);
+    setSyncStatus(false, 'เชื่อมต่อ OneDrive ไม่ได้');
+  }
+}
+
+async function saveState(){
+  isSaving = true;
+  try{
+    const headers = { 'Content-Type': 'application/json' };
+    // ถ้ามี ETag เดิม ให้แนบไปด้วยเพื่อกันข้อมูลชนกัน (คนอื่นแก้ไปแล้วระหว่างที่เรากำลังจะบันทึก)
+    if(lastKnownETag) headers['If-Match'] = lastKnownETag;
+    const res = await graphFetch(`${DATA_ITEM_PATH}:/content`, {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify(state)
+    });
+    if(res.status === 412){
+      // conflict: มีคนอื่นบันทึกไปก่อนแล้ว — โหลดข้อมูลล่าสุดมาก่อน แล้วแจ้งผู้ใช้ให้ลองทำรายการใหม่
+      setSyncStatus(false, 'ข้อมูลถูกแก้ไขโดยคนอื่นพร้อมกัน — กำลังโหลดข้อมูลล่าสุด');
+      lastKnownETag = null;
+      await refreshState();
+      alert('มีคนอื่นบันทึกข้อมูลพร้อมกับคุณ ระบบโหลดข้อมูลล่าสุดมาให้แล้ว กรุณาลองทำรายการอีกครั้ง');
+      return;
+    }
+    if(!res.ok){
+      throw new Error(`บันทึกข้อมูลไม่สำเร็จ (HTTP ${res.status})`);
+    }
+    const json = await res.json();
+    lastKnownETag = json.eTag;
+    setSyncStatus(true, 'ซิงก์ข้อมูลแล้ว');
+  }catch(e){
+    console.error('save failed', e);
+    setSyncStatus(false, 'บันทึกข้อมูลไม่สำเร็จ');
+    alert('บันทึกข้อมูลไปยัง OneDrive ไม่สำเร็จ กรุณาตรวจสอบการเชื่อมต่อแล้วลองใหม่');
+  }finally{
+    isSaving = false;
+  }
+}
+
+function fmtTime(iso){
+  const d = new Date(iso);
+  return d.toLocaleString('th-TH', {day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit'});
+}
+
+function fmtDate(dateStr){
+  if(!dateStr) return '';
+  const d = new Date(dateStr + 'T00:00:00');
+  return d.toLocaleDateString('th-TH', {day:'2-digit', month:'2-digit', year:'2-digit'});
+}
+
+function findByCode(code){
+  if(!code) return null;
+  return state.equipment.find(e => e.code.toLowerCase() === code.trim().toLowerCase());
+}
+
+async function addEquipment(){
+  const code = document.getElementById('new-code').value.trim();
+  const name = document.getElementById('new-name').value.trim();
+  const checklistRaw = document.getElementById('new-checklist').value.trim();
+  if(!code || !name) return;
+  if(findByCode(code)){ alert('มีรหัสอุปกรณ์นี้อยู่แล้ว'); return; }
+  const checklistItems = checklistRaw ? checklistRaw.split(',').map(s=>s.trim()).filter(Boolean) : [];
+  state.equipment.push({code, name, status:'available', borrower:null, borrowedAt:null, photo:null, faceDescriptor:null, estimatedBorrowDate:null, estimatedReturnDate:null, checklistItems, bookings:[]});
+  await saveState();
+  document.getElementById('new-code').value='';
+  document.getElementById('new-name').value='';
+  document.getElementById('new-checklist').value='';
+  renderHome();
+}
+
+function renderHome(){
+  const grid = document.getElementById('grid');
+  const avail = state.equipment.filter(e=>e.status==='available').length;
+  document.getElementById('count-badge').textContent = `${avail} ว่าง / ${state.equipment.length} ทั้งหมด`;
+  if(state.equipment.length === 0){
+    grid.innerHTML = '<div class="empty">ยังไม่มีอุปกรณ์ในระบบ — เพิ่มอุปกรณ์ด้านบน</div>';
+  } else {
+    grid.innerHTML = state.equipment.map(e => {
+      const upcoming = (e.bookings || []).filter(b => b.endDate >= todayStr()).sort((a,b) => a.startDate < b.startDate ? -1 : 1)[0];
+      return `
+      <button class="card ${e.status==='available'?'avail':'out'}" onclick="openDetail('${e.code}')">
+        <div class="code">${e.code}</div>
+        <div class="name">${e.name}</div>
+        <div class="status ${e.status==='available'?'avail-text':''}">
+          ${e.status==='available' ? 'ว่าง พร้อมให้ยืม' : `ถูกยืมโดย <b>${e.borrower}</b>`}
+        </div>
+        ${upcoming ? `<div class="status" style="margin-top:3px;">📅 จองล่วงหน้า: ${fmtDate(upcoming.startDate)}</div>` : ''}
+      </button>
+    `;
+    }).join('');
+  }
+  renderHistory();
+}
+
+function renderHistory(){
+  const hist = document.getElementById('history');
+  if(!state.history || state.history.length === 0){
+    hist.innerHTML = '<div class="empty" style="padding:1rem;">ยังไม่มีประวัติการยืม</div>';
+  } else {
+    hist.innerHTML = state.history.map((h, idx) => {
+      const isReturn = h.action === 'return' || h.action === 'return_manual';
+      const isManual = h.action === 'return_manual';
+      let tagStyle = '';
+      let tagText = 'ยืม';
+      if(isManual){ tagStyle = 'background:rgba(245,166,35,.16);color:#F5C77E;'; tagText = 'คืน (มือ)'; }
+      else if(isReturn){ tagStyle = 'background:rgba(248,113,113,.14);color:#F7B9B9;'; tagText = 'คืน'; }
+      return `
+        <div class="hrow">
+          <span class="htag" style="${tagStyle}">${tagText}</span>
+          <span class="htxt"><b>${h.borrower}</b> — ${h.name} (${h.code})${h.evidenceFile ? ` <button type="button" onclick="openEvidenceModal(${idx})" style="background:none;border:none;color:var(--accent);text-decoration:none;font-size:inherit;font-family:inherit;cursor:pointer;padding:0;">📎 หลักฐาน</button>` : ''}${h.checklistLabels && h.checklistLabels.length ? `<br><span style="font-size:11px;">✓ เช็คแล้ว: ${h.checklistLabels.join(', ')}</span>` : ''}</span>
+          <span class="htime">${fmtTime(h.time)}</span>
+        </div>
+      `;
+    }).join('');
+  }
+}
+
+function resetCamUi(){
+  document.getElementById('cam-frame').className = 'cam-frame empty-frame';
+  document.getElementById('cam-frame').textContent = 'ยังไม่ได้เปิดกล้อง';
+  document.getElementById('open-cam-btn').style.display = 'block';
+  document.getElementById('shoot-buttons').style.display = 'none';
+  document.getElementById('review-buttons').style.display = 'none';
+  document.getElementById('proceed-to-form-btn').style.display = 'none';
+  document.getElementById('form-block').style.display = 'none';
+  document.getElementById('cam-msg').className = 'msg';
+  document.getElementById('borrow-name').value = '';
+  document.getElementById('borrow-estimate-start').value = todayStr();
+  document.getElementById('borrow-estimate-end').value = '';
+  capturedPhoto = null;
+  capturedDescriptor = null;
+  activeBookingId = null;
+}
+
+function todayStr(){
+  const d = new Date();
+  const pad = n => String(n).padStart(2,'0');
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+}
+
+function resetReturnCamUi(){
+  document.getElementById('return-cam-frame').className = 'cam-frame empty-frame';
+  document.getElementById('return-cam-frame').textContent = 'ยังไม่ได้เปิดกล้อง';
+  document.getElementById('open-return-cam-btn').style.display = 'block';
+  document.getElementById('return-shoot-buttons').style.display = 'none';
+  document.getElementById('return-review-buttons').style.display = 'none';
+  document.getElementById('confirm-return-btn').style.display = 'none';
+  document.getElementById('return-msg').className = 'msg';
+  capturedReturnPhoto = null;
+  capturedReturnDescriptor = null;
+  document.getElementById('manual-return-block').style.display = 'none';
+  document.getElementById('manual-return-name').value = '';
+  document.querySelectorAll('.return-check-item').forEach(cb => cb.checked = false);
+  document.getElementById('return-evidence-file').value = '';
+}
+
+function openDetail(code){
+  selectedCode = code;
+  stopCamera();
+  resetCamUi();
+  resetReturnCamUi();
+  resetBookingUi();
+  document.getElementById('view-home').style.display = 'none';
+  document.getElementById('view-detail').style.display = 'block';
+  renderDetail();
+}
+
+function resetBookingUi(){
+  document.getElementById('booking-name').value = '';
+  document.getElementById('booking-start').value = '';
+  document.getElementById('booking-end').value = '';
+  document.getElementById('booking-msg').className = 'msg';
+  bookingSelStart = null;
+  bookingSelEnd = null;
+  bookingCalDate = new Date();
+}
+
+function goHome(){
+  stopCamera();
+  selectedCode = null;
+  document.getElementById('view-detail').style.display = 'none';
+  document.getElementById('view-home').style.display = 'block';
+  renderHome();
+}
+
+function renderDetail(){
+  const item = findByCode(selectedCode);
+  if(!item){ goHome(); return; }
+  document.getElementById('d-code').textContent = item.code;
+  document.getElementById('d-name').textContent = item.name;
+  renderBookings(item);
+  const availBlock = document.getElementById('d-available-block');
+  const borrowedBlock = document.getElementById('d-borrowed-block');
+  if(item.status === 'available'){
+    availBlock.style.display = 'block';
+    borrowedBlock.style.display = 'none';
+  } else {
+    availBlock.style.display = 'none';
+    borrowedBlock.style.display = 'block';
+    document.getElementById('d-borrower').textContent = item.borrower;
+    document.getElementById('d-borrowedat').textContent = 'ยืมเมื่อ ' + fmtTime(item.borrowedAt);
+    const estimateEl = document.getElementById('d-estimate');
+    if(item.estimatedReturnDate){
+      const isOverdue = todayStr() > item.estimatedReturnDate;
+      let text = `กำหนดคืน ${fmtDate(item.estimatedReturnDate)}`;
+      if(item.estimatedBorrowDate) text = `ยืมตั้งแต่ ${fmtDate(item.estimatedBorrowDate)} — ${text}`;
+      if(isOverdue) text += ' (เกินกำหนด)';
+      estimateEl.textContent = text;
+      estimateEl.className = isOverdue ? 'overdue' : '';
+    } else {
+      estimateEl.textContent = '';
+      estimateEl.className = '';
+    }
+    renderReturnChecklist(item);
+  }
+}
+
+// Renders one checkbox per accessory/part defined on this equipment item
+// (e.g. เลนส์, ฝาปิดเลนส์, housing). Falls back to a single generic item
+// for equipment added before this feature existed (no checklistItems saved).
+function renderReturnChecklist(item){
+  const container = document.getElementById('return-checklist-items');
+  const items = (item && item.checklistItems && item.checklistItems.length) ? item.checklistItems : ['สภาพอุปกรณ์โดยรวม'];
+  container.innerHTML = items.map((label, i) => `
+    <label class="checkbox-row" for="return-check-${i}">
+      <input type="checkbox" id="return-check-${i}" class="return-check-item">
+      <span>${label} — ครบและสภาพดี</span>
+    </label>
+  `).join('');
+}
+
+// Renders the list of future reservations for this equipment (separate from
+// the actual physical borrow/return flow above). Bookings just hold a name
+// and date range so people can claim a slot ahead of time.
+function renderBookings(item){
+  const list = document.getElementById('booking-list');
+  const bookings = (item.bookings || []).slice().sort((a,b) => a.startDate < b.startDate ? -1 : (a.startDate > b.startDate ? 1 : 0));
+  if(bookings.length === 0){
+    list.innerHTML = '<div class="booking-empty">ยังไม่มีการจองล่วงหน้า</div>';
+    renderBookingCalendar();
+    return;
+  }
+  const today = todayStr();
+  list.innerHTML = bookings.map(b => {
+    const isDue = today >= b.startDate && today <= b.endDate;
+    return `
+    <div class="booking-row${isDue ? ' due' : ''}">
+      <span class="btxt"><b>${b.name}</b><span class="bdate">${fmtDate(b.startDate)} – ${fmtDate(b.endDate)}${isDue ? ' · ถึงกำหนดวันนี้' : ''}</span></span>
+      ${isDue ? `<button class="claim-btn" onclick="startBookingBorrow('${b.id}')">เริ่มยืมตามนัดนี้</button>` : ''}
+      <button onclick="cancelBooking('${b.id}')">ยกเลิก</button>
+    </div>
+  `;
+  }).join('');
+  renderBookingCalendar();
+}
+
+// Called when someone with an active (date-arrived) booking is ready to actually
+// take the equipment. Pre-fills the borrow form from their booking so they only
+// need to do the normal identity photo scan below — walk-ins without a booking
+// just use the same scan-first flow directly.
+function startBookingBorrow(bookingId){
+  const item = findByCode(selectedCode);
+  if(!item) return;
+  const booking = (item.bookings || []).find(b => b.id === bookingId);
+  if(!booking) return;
+  if(item.status !== 'available'){
+    showCamMsg('อุปกรณ์ชิ้นนี้ยังไม่ว่าง กรุณารอให้คืนก่อน แล้วค่อยกลับมายืมตามนัดนี้', false);
+    return;
+  }
+  activeBookingId = bookingId;
+  document.getElementById('borrow-name').value = booking.name;
+  document.getElementById('borrow-estimate-start').value = booking.startDate;
+  document.getElementById('borrow-estimate-end').value = booking.endDate;
+  showCamMsg(`กำลังยืมตามนัดของ ${booking.name} — กดเปิดกล้องด้านล่างเพื่อถ่ายรูปยืนยันตัวตนแล้วยืนยันการยืม`, true);
+  const hint = document.getElementById('cam-hint');
+  if(hint) hint.scrollIntoView({behavior:'smooth', block:'center'});
+}
+
+function toDateStr(d){
+  const pad = n => String(n).padStart(2,'0');
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+}
+
+// Collects every date (as 'YYYY-MM-DD' strings) that this equipment is already
+// spoken for: existing advance bookings, plus the current active borrow's
+// estimated window if it's out right now. Used to paint the calendar red.
+function getBusyDates(item){
+  const busy = new Set();
+  const addRange = (start, end) => {
+    if(!start || !end) return;
+    let d = new Date(start + 'T00:00:00');
+    const endD = new Date(end + 'T00:00:00');
+    while(d <= endD){
+      busy.add(toDateStr(d));
+      d.setDate(d.getDate() + 1);
+    }
+  };
+  (item.bookings || []).forEach(b => addRange(b.startDate, b.endDate));
+  if(item.status === 'borrowed'){
+    addRange(item.estimatedBorrowDate, item.estimatedReturnDate);
+  }
+  return busy;
+}
+
+function renderBookingCalendar(){
+  const item = findByCode(selectedCode);
+  const grid = document.getElementById('cal-grid');
+  const dowRow = document.getElementById('cal-dow-row');
+  const label = document.getElementById('cal-month-label');
+  if(!item || !grid || !label) return;
+
+  const year = bookingCalDate.getFullYear();
+  const month = bookingCalDate.getMonth();
+  label.textContent = bookingCalDate.toLocaleDateString('th-TH', {month:'long', year:'numeric'});
+
+  const busy = getBusyDates(item);
+  const today = todayStr();
+  const firstDay = new Date(year, month, 1);
+  const startWeekday = firstDay.getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const dows = ['อา','จ','อ','พ','พฤ','ศ','ส'];
+
+  if(dowRow) dowRow.innerHTML = dows.map(d => `<div class="cal-dow">${d}</div>`).join('');
+
+  let html = '';
+  for(let i = 0; i < startWeekday; i++){
+    html += '<div class="cal-day cal-blank"></div>';
+  }
+  for(let day = 1; day <= daysInMonth; day++){
+    const dateStr = toDateStr(new Date(year, month, day));
+    const classes = ['cal-day'];
+    if(dateStr < today) classes.push('past');
+    else if(busy.has(dateStr)) classes.push('busy');
+    if(dateStr === today) classes.push('today');
+    if(dateStr === bookingSelStart || dateStr === bookingSelEnd) classes.push('selected');
+    if(bookingSelStart && bookingSelEnd && dateStr > bookingSelStart && dateStr < bookingSelEnd) classes.push('in-range');
+    html += `<div class="${classes.join(' ')}" onclick="pickBookingDate('${dateStr}')">${day}</div>`;
+  }
+  // pad trailing cells so the grid always fills a full 6-row layout (42 cells)
+  // and every month renders at the same consistent height
+  const totalCells = startWeekday + daysInMonth;
+  const trailing = (42 - totalCells % 42) % 42;
+  for(let i = 0; i < trailing; i++){
+    html += '<div class="cal-day cal-blank"></div>';
+  }
+  grid.innerHTML = html;
+
+  const selText = document.getElementById('cal-selected-text');
+  if(bookingSelStart && bookingSelEnd){
+    selText.textContent = `เลือก: ${fmtDate(bookingSelStart)} – ${fmtDate(bookingSelEnd)}`;
+  } else if(bookingSelStart){
+    selText.textContent = `เริ่ม: ${fmtDate(bookingSelStart)} — เลือกวันสิ้นสุด`;
+  } else {
+    selText.textContent = 'ยังไม่ได้เลือกวันที่';
+  }
+}
+
+function shiftBookingCalMonth(delta){
+  bookingCalDate = new Date(bookingCalDate.getFullYear(), bookingCalDate.getMonth() + delta, 1);
+  renderBookingCalendar();
+}
+
+function pickBookingDate(dateStr){
+  const item = findByCode(selectedCode);
+  if(!item) return;
+  const busy = getBusyDates(item);
+  const today = todayStr();
+  if(dateStr < today || busy.has(dateStr)) return;
+
+  if(!bookingSelStart || (bookingSelStart && bookingSelEnd)){
+    bookingSelStart = dateStr;
+    bookingSelEnd = null;
+  } else if(dateStr < bookingSelStart){
+    bookingSelStart = dateStr;
+    bookingSelEnd = null;
+  } else {
+    let d = new Date(bookingSelStart + 'T00:00:00');
+    const endD = new Date(dateStr + 'T00:00:00');
+    let hasConflict = false;
+    while(d <= endD){
+      if(busy.has(toDateStr(d))){ hasConflict = true; break; }
+      d.setDate(d.getDate() + 1);
+    }
+    if(hasConflict){
+      showBookingMsg('ช่วงวันที่นี้มีวันที่ไม่ว่างอยู่ กรุณาเลือกช่วงใหม่', false);
+      bookingSelStart = dateStr;
+      bookingSelEnd = null;
+    } else {
+      bookingSelEnd = dateStr;
+    }
+  }
+  document.getElementById('booking-start').value = bookingSelStart || '';
+  document.getElementById('booking-end').value = bookingSelEnd || '';
+  renderBookingCalendar();
+}
+
+function showBookingMsg(text, ok){
+  const el = document.getElementById('booking-msg');
+  el.textContent = text;
+  el.className = 'msg show ' + (ok ? 'ok' : 'err');
+}
+
+async function addBooking(){
+  const name = document.getElementById('booking-name').value.trim();
+  const start = document.getElementById('booking-start').value;
+  const end = document.getElementById('booking-end').value;
+
+  if(!name){ showBookingMsg('กรุณากรอกชื่อผู้จอง', false); return; }
+  if(!start || !end){ showBookingMsg('กรุณาเลือกวันที่เริ่มและสิ้นสุดการจอง', false); return; }
+  if(end < start){ showBookingMsg('วันที่สิ้นสุดต้องไม่ก่อนวันที่เริ่มจอง', false); return; }
+  if(start < todayStr()){ showBookingMsg('ไม่สามารถจองย้อนหลังได้', false); return; }
+
+  await refreshState();
+  const item = findByCode(selectedCode);
+  if(!item){ showBookingMsg('ไม่พบอุปกรณ์นี้แล้ว', false); renderHome(); return; }
+
+  const overlap = (item.bookings || []).some(b => !(end < b.startDate || start > b.endDate));
+  if(overlap){ showBookingMsg('ช่วงวันที่นี้ถูกจองไว้แล้วโดยคนอื่น กรุณาเลือกช่วงวันที่อื่น', false); return; }
+
+  if(!item.bookings) item.bookings = [];
+  item.bookings.push({ id: 'bk-' + Date.now() + '-' + Math.random().toString(36).slice(2,7), name, startDate: start, endDate: end, createdAt: new Date().toISOString() });
+  await saveState();
+
+  document.getElementById('booking-name').value = '';
+  document.getElementById('booking-start').value = '';
+  document.getElementById('booking-end').value = '';
+  bookingSelStart = null;
+  bookingSelEnd = null;
+  showBookingMsg('จองล่วงหน้าเรียบร้อยแล้ว', true);
+  renderDetail();
+}
+
+async function cancelBooking(id){
+  await refreshState();
+  const item = findByCode(selectedCode);
+  if(!item || !item.bookings) return;
+  item.bookings = item.bookings.filter(b => b.id !== id);
+  await saveState();
+  renderDetail();
+}
+
+async function openCamera(){
+  const frame = document.getElementById('cam-frame');
+  try{
+    cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
+  }catch(err){
+    console.error('camera error', err);
+    showCamMsg('เปิดกล้องไม่ได้ — ตรวจสอบสิทธิ์การเข้าถึงกล้อง หรือเปิดหน้านี้ผ่าน https/localhost (ไฟล์ที่เปิดตรงๆ จะใช้กล้องไม่ได้)', false);
+    return;
+  }
+  frame.className = 'cam-frame';
+  frame.innerHTML = '<video id="cam-video" autoplay playsinline muted></video>';
+  const video = document.getElementById('cam-video');
+  video.srcObject = cameraStream;
+  document.getElementById('open-cam-btn').style.display = 'none';
+  document.getElementById('shoot-buttons').style.display = 'block';
+  document.getElementById('review-buttons').style.display = 'none';
+  document.getElementById('cam-msg').className = 'msg';
+}
+
+function stopCamera(){
+  if(cameraStream){
+    cameraStream.getTracks().forEach(t => t.stop());
+    cameraStream = null;
+  }
+}
+
+async function takePhoto(){
+  const video = document.getElementById('cam-video');
+  if(!video) return;
+  const canvas = document.createElement('canvas');
+  const w = video.videoWidth || 640, h = video.videoHeight || 480;
+  canvas.width = 480;
+  canvas.height = Math.round(480 * h / w);
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+  stopCamera();
+
+  const photoDataUrl = canvas.toDataURL('image/jpeg', 0.7);
+  capturedPhoto = null;
+  capturedDescriptor = null;
+  const frame = document.getElementById('cam-frame');
+  frame.innerHTML = `<img src="${photoDataUrl}" alt="รูปที่ถ่าย">`;
+  document.getElementById('shoot-buttons').style.display = 'none';
+  document.getElementById('review-buttons').style.display = 'flex';
+  document.getElementById('proceed-to-form-btn').style.display = 'none';
+  showCamMsg('กำลังตรวจสอบว่ามีใบหน้าคนอยู่ในรูป...', true);
+
+  const ready = await ensureFaceApi();
+  if(!ready){
+    showCamMsg('โหลดระบบตรวจจับใบหน้าไม่สำเร็จ ตรวจสอบการเชื่อมต่ออินเทอร์เน็ตแล้วลองถ่ายใหม่', false);
+    return;
+  }
+
+  const descriptor = await getFaceDescriptor(canvas);
+
+  if(descriptor){
+    capturedPhoto = photoDataUrl;
+    capturedDescriptor = Array.from(descriptor);
+    showCamMsg('ตรวจพบใบหน้าในรูปแล้ว กดปุ่มด้านล่างเพื่อไปกรอกฟอร์ม', true);
+    document.getElementById('proceed-to-form-btn').style.display = 'block';
+  } else {
+    capturedPhoto = null;
+    capturedDescriptor = null;
+    showCamMsg('ไม่พบใบหน้าคนในรูปนี้ กรุณาถ่ายใหม่ให้เห็นหน้าอยู่กลางเฟรมและมีแสงเพียงพอ', false);
+  }
+}
+
+function retakePhoto(){
+  capturedPhoto = null;
+  capturedDescriptor = null;
+  document.getElementById('review-buttons').style.display = 'none';
+  document.getElementById('proceed-to-form-btn').style.display = 'none';
+  document.getElementById('form-block').style.display = 'none';
+  openCamera();
+}
+
+function proceedToForm(){
+  if(!capturedPhoto){
+    showCamMsg('กรุณาถ่ายรูปที่เห็นใบหน้าคนก่อนไปกรอกฟอร์ม', false);
+    return;
+  }
+  document.getElementById('form-block').style.display = 'block';
+  document.getElementById('borrow-name').focus();
+}
+
+function showCamMsg(text, ok){
+  const el = document.getElementById('cam-msg');
+  el.textContent = text;
+  el.className = 'msg show ' + (ok ? 'ok' : 'err');
+}
+
+async function confirmBorrow(){
+  const name = document.getElementById('borrow-name').value.trim();
+  const estimateStart = document.getElementById('borrow-estimate-start').value;
+  const estimateEnd = document.getElementById('borrow-estimate-end').value;
+  if(!name){ showCamMsg('กรุณากรอกชื่อผู้ยืม', false); return; }
+  if(!capturedPhoto || !capturedDescriptor){ showCamMsg('กรุณาถ่ายรูปก่อนยืนยันการยืม', false); return; }
+  if(!estimateStart){ showCamMsg('กรุณากรอกวันที่คาดว่าจะยืม', false); return; }
+  if(!estimateEnd){ showCamMsg('กรุณากรอกวันที่คาดว่าจะคืน', false); return; }
+  if(estimateEnd < estimateStart){ showCamMsg('วันที่คาดว่าจะคืนต้องไม่ก่อนวันที่คาดว่าจะยืม', false); return; }
+  await refreshState();
+  const item = findByCode(selectedCode);
+  if(!item || item.status !== 'available'){
+    showCamMsg('อุปกรณ์นี้ถูกยืมไปแล้ว ไม่สามารถยืมซ้ำได้', false);
+    renderDetail();
+    return;
+  }
+  const now = new Date().toISOString();
+  item.status = 'borrowed';
+  item.borrower = name;
+  item.borrowedAt = now;
+  item.photo = capturedPhoto;
+  item.faceDescriptor = capturedDescriptor;
+  item.estimatedBorrowDate = estimateStart;
+  item.estimatedReturnDate = estimateEnd;
+  if(activeBookingId){
+    item.bookings = (item.bookings || []).filter(b => b.id !== activeBookingId);
+  }
+  state.history.unshift({code:item.code, name:item.name, borrower:name, time:now, action:'borrow', estimatedBorrowDate:estimateStart, estimatedReturnDate:estimateEnd});
+  state.history = state.history.slice(0, 50);
+  await saveState();
+  capturedPhoto = null;
+  capturedDescriptor = null;
+  activeBookingId = null;
+  resetReturnCamUi();
+  renderDetail();
+}
+
+async function openReturnCamera(){
+  const frame = document.getElementById('return-cam-frame');
+  try{
+    cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
+  }catch(err){
+    console.error('camera error', err);
+    showReturnMsg('เปิดกล้องไม่ได้ — ตรวจสอบสิทธิ์การเข้าถึงกล้อง หรือเปิดหน้านี้ผ่าน https/localhost (ไฟล์ที่เปิดตรงๆ จะใช้กล้องไม่ได้)', false);
+    return;
+  }
+  frame.className = 'cam-frame';
+  frame.innerHTML = '<video id="return-cam-video" autoplay playsinline muted></video>';
+  document.getElementById('return-cam-video').srcObject = cameraStream;
+  document.getElementById('open-return-cam-btn').style.display = 'none';
+  document.getElementById('return-shoot-buttons').style.display = 'block';
+  document.getElementById('return-review-buttons').style.display = 'none';
+  document.getElementById('confirm-return-btn').style.display = 'none';
+  document.getElementById('return-msg').className = 'msg';
+}
+
+async function takeReturnPhoto(){
+  const video = document.getElementById('return-cam-video');
+  if(!video) return;
+  const canvas = document.createElement('canvas');
+  const w = video.videoWidth || 640, h = video.videoHeight || 480;
+  canvas.width = 480;
+  canvas.height = Math.round(480 * h / w);
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+  stopCamera();
+
+  const photoDataUrl = canvas.toDataURL('image/jpeg', 0.7);
+  capturedReturnPhoto = null;
+  capturedReturnDescriptor = null;
+  const frame = document.getElementById('return-cam-frame');
+  frame.innerHTML = `<img src="${photoDataUrl}" alt="รูปยืนยันตัวตน">`;
+  document.getElementById('return-shoot-buttons').style.display = 'none';
+  document.getElementById('return-review-buttons').style.display = 'flex';
+  document.getElementById('confirm-return-btn').style.display = 'none';
+  showReturnMsg('กำลังตรวจสอบใบหน้า...', true);
+
+  const ready = await ensureFaceApi();
+  if(!ready){
+    showReturnMsg('โหลดระบบตรวจจับใบหน้าไม่สำเร็จ ตรวจสอบการเชื่อมต่ออินเทอร์เน็ตแล้วลองใหม่', false);
+    return;
+  }
+
+  await refreshState();
+  const item = findByCode(selectedCode);
+  if(!item || item.status !== 'borrowed'){
+    showReturnMsg('ข้อมูลอุปกรณ์มีการเปลี่ยนแปลง กรุณากลับไปหน้ารายการแล้วลองใหม่', false);
+    renderDetail();
+    return;
+  }
+  if(!item.faceDescriptor){
+    showReturnMsg('ไม่มีข้อมูลใบหน้าของผู้ยืมเดิมให้เทียบ (อาจเป็นรายการเก่าก่อนมีระบบนี้) ไม่สามารถยืนยันอัตโนมัติได้', false);
+    return;
+  }
+
+  const descriptor = await getFaceDescriptor(canvas);
+  if(!descriptor){
+    showReturnMsg('ไม่พบใบหน้าคนในรูปนี้ กรุณาถ่ายใหม่ให้เห็นหน้าชัดเจนและมีแสงเพียงพอ', false);
+    return;
+  }
+
+  const distance = faceapi.euclideanDistance(descriptor, item.faceDescriptor);
+  const similarity = similarityFromDistance(distance);
+  const passed = similarity >= MATCH_THRESHOLD_PERCENT;
+
+  if(passed){
+    capturedReturnPhoto = photoDataUrl;
+    capturedReturnDescriptor = Array.from(descriptor);
+    showReturnMsg(`ใบหน้าตรงกับผู้ยืมเดิม ${similarity.toFixed(1)}% (ต้องการอย่างน้อย ${MATCH_THRESHOLD_PERCENT}%) — กดยืนยันเพื่อคืนอุปกรณ์`, true);
+    document.getElementById('confirm-return-btn').style.display = 'block';
+  } else {
+    showReturnMsg(`ใบหน้าไม่ตรงกับผู้ยืมเดิมมากพอ (ตรงกัน ${similarity.toFixed(1)}% ต้องการอย่างน้อย ${MATCH_THRESHOLD_PERCENT}%) กรุณาให้ผู้ยืมเดิมเป็นผู้สแกน หรือถ่ายใหม่ในที่ที่มีแสงดีขึ้น`, false);
+  }
+}
+
+function retakeReturnPhoto(){
+  capturedReturnPhoto = null;
+  capturedReturnDescriptor = null;
+  document.getElementById('return-review-buttons').style.display = 'none';
+  document.getElementById('confirm-return-btn').style.display = 'none';
+  openReturnCamera();
+}
+
+function showReturnMsg(text, ok){
+  const el = document.getElementById('return-msg');
+  el.textContent = text;
+  el.className = 'msg show ' + (ok ? 'ok' : 'err');
+}
+
+function readFileAsDataURL(file){
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(new Error('อ่านไฟล์ไม่สำเร็จ'));
+    reader.readAsDataURL(file);
+  });
+}
+
+const MAX_EVIDENCE_FILE_BYTES = 3 * 1024 * 1024; // keep comfortably under the 5MB storage value limit once base64-encoded
+
+// Validates the pre-return checklist + evidence file. Shows an error via showReturnMsg
+// and returns null on failure, or {dataUrl, fileName} on success.
+async function collectReturnEvidence(){
+  const checkRows = Array.from(document.querySelectorAll('#return-checklist-items .checkbox-row'));
+  const checkboxes = Array.from(document.querySelectorAll('.return-check-item'));
+  const allChecked = checkboxes.length > 0 && checkboxes.every(cb => cb.checked);
+  if(!allChecked){
+    showReturnMsg('กรุณาติ๊กยืนยันการตรวจสอบอุปกรณ์ย่อยให้ครบทุกรายการก่อนคืน', false);
+    return null;
+  }
+  const checkedLabels = checkRows.map(row => row.querySelector('span').textContent);
+  const fileInput = document.getElementById('return-evidence-file');
+  const file = fileInput.files[0];
+  if(!file){
+    showReturnMsg('กรุณาแนบไฟล์หลักฐานว่าคืนอุปกรณ์ครบ', false);
+    return null;
+  }
+  if(file.size > MAX_EVIDENCE_FILE_BYTES){
+    showReturnMsg('ไฟล์หลักฐานมีขนาดใหญ่เกินไป กรุณาแนบไฟล์ไม่เกิน 3MB', false);
+    return null;
+  }
+  try{
+    const dataUrl = await readFileAsDataURL(file);
+    return { dataUrl, fileName: file.name, checklistLabels: checkedLabels };
+  }catch(err){
+    console.error('read evidence file failed', err);
+    showReturnMsg('อ่านไฟล์หลักฐานไม่สำเร็จ กรุณาลองใหม่', false);
+    return null;
+  }
+}
+
+async function confirmReturn(){
+  if(!capturedReturnPhoto || !capturedReturnDescriptor){
+    showReturnMsg('กรุณาสแกนใบหน้ายืนยันตัวตนให้ผ่านก่อนคืนอุปกรณ์', false);
+    return;
+  }
+  const evidence = await collectReturnEvidence();
+  if(!evidence) return;
+  await refreshState();
+  const item = findByCode(selectedCode);
+  if(!item || item.status !== 'borrowed'){
+    showReturnMsg('ข้อมูลอุปกรณ์มีการเปลี่ยนแปลง กรุณาลองใหม่', false);
+    renderDetail();
+    return;
+  }
+  const now = new Date().toISOString();
+  const borrowerName = item.borrower;
+  state.history.unshift({code:item.code, name:item.name, borrower:borrowerName, time:now, action:'return', evidenceFile:evidence.dataUrl, evidenceFileName:evidence.fileName, checklistLabels:evidence.checklistLabels, borrowedAt:item.borrowedAt, borrowerPhoto:item.photo, returnerPhoto:capturedReturnPhoto});
+  state.history = state.history.slice(0, 50);
+  item.status = 'available';
+  item.borrower = null;
+  item.borrowedAt = null;
+  item.photo = null;
+  item.faceDescriptor = null;
+  item.estimatedBorrowDate = null;
+  item.estimatedReturnDate = null;
+  await saveState();
+  capturedReturnPhoto = null;
+  capturedReturnDescriptor = null;
+  resetCamUi();
+  resetReturnCamUi();
+  renderDetail();
+}
+
+function toggleManualReturn(){
+  const item = findByCode(selectedCode);
+  const block = document.getElementById('manual-return-block');
+  const showing = block.style.display === 'block';
+  if(showing){
+    block.style.display = 'none';
+  } else {
+    document.getElementById('manual-expected-name').textContent = item ? item.borrower : '';
+    document.getElementById('manual-return-name').value = '';
+    block.style.display = 'block';
+  }
+}
+
+async function confirmManualReturn(){
+  const typed = document.getElementById('manual-return-name').value.trim();
+  await refreshState();
+  const item = findByCode(selectedCode);
+  if(!item || item.status !== 'borrowed'){
+    showReturnMsg('ข้อมูลอุปกรณ์มีการเปลี่ยนแปลง กรุณาลองใหม่', false);
+    renderDetail();
+    return;
+  }
+  if(!typed || typed.toLowerCase() !== (item.borrower || '').trim().toLowerCase()){
+    showReturnMsg('ชื่อที่พิมพ์ไม่ตรงกับผู้ยืมเดิม กรุณาตรวจสอบการสะกดอีกครั้ง', false);
+    return;
+  }
+  const evidence = await collectReturnEvidence();
+  if(!evidence) return;
+  const now = new Date().toISOString();
+  const borrowerName = item.borrower;
+  state.history.unshift({code:item.code, name:item.name, borrower:borrowerName, time:now, action:'return_manual', evidenceFile:evidence.dataUrl, evidenceFileName:evidence.fileName, checklistLabels:evidence.checklistLabels, borrowedAt:item.borrowedAt, borrowerPhoto:item.photo, returnerPhoto:null});
+  state.history = state.history.slice(0, 50);
+  item.status = 'available';
+  item.borrower = null;
+  item.borrowedAt = null;
+  item.photo = null;
+  item.faceDescriptor = null;
+  item.estimatedBorrowDate = null;
+  item.estimatedReturnDate = null;
+  await saveState();
+  capturedReturnPhoto = null;
+  capturedReturnDescriptor = null;
+  resetCamUi();
+  resetReturnCamUi();
+  renderDetail();
+}
+
+function openEvidenceModal(idx){
+  const h = state.history[idx];
+  if(!h) return;
+  document.getElementById('ev-equipment').textContent = `${h.name} (${h.code})`;
+  document.getElementById('ev-borrower').textContent = h.borrower;
+  document.getElementById('ev-borrowed-at').textContent = h.borrowedAt ? fmtTime(h.borrowedAt) : 'ไม่มีข้อมูล';
+  document.getElementById('ev-returned-at').textContent = fmtTime(h.time);
+
+  const checklistRow = document.getElementById('ev-checklist-row');
+  if(h.checklistLabels && h.checklistLabels.length){
+    checklistRow.style.display = 'block';
+    document.getElementById('ev-checklist').textContent = h.checklistLabels.join(', ');
+  } else {
+    checklistRow.style.display = 'none';
+  }
+
+  const borrowerPhotoRow = document.getElementById('ev-borrower-photo-row');
+  if(h.borrowerPhoto){
+    borrowerPhotoRow.style.display = 'block';
+    document.getElementById('ev-borrower-photo').innerHTML = `<div class="modal-evidence"><img src="${h.borrowerPhoto}" alt="รูปผู้ยืม"></div>`;
+  } else {
+    borrowerPhotoRow.style.display = 'none';
+  }
+
+  const returnerPhotoRow = document.getElementById('ev-returner-photo-row');
+  if(h.returnerPhoto){
+    returnerPhotoRow.style.display = 'block';
+    document.getElementById('ev-returner-photo').innerHTML = `<div class="modal-evidence"><img src="${h.returnerPhoto}" alt="รูปผู้คืน"></div>`;
+  } else {
+    returnerPhotoRow.style.display = 'none';
+  }
+
+  const evEl = document.getElementById('ev-evidence');
+  if(h.evidenceFile){
+    const isImage = h.evidenceFile.startsWith('data:image/') || /\.(png|jpe?g|gif|webp)$/i.test(h.evidenceFileName || '');
+    if(isImage){
+      evEl.innerHTML = `<div class="modal-evidence"><img src="${h.evidenceFile}" alt="หลักฐานการคืน"></div>`;
+    } else {
+      evEl.innerHTML = `<a href="${h.evidenceFile}" target="_blank" rel="noopener" style="color:var(--accent);">📎 ${h.evidenceFileName || 'เปิดไฟล์หลักฐาน'}</a>`;
+    }
+  } else {
+    evEl.innerHTML = '<span class="value small">ไม่มีไฟล์แนบ</span>';
+  }
+
+  document.getElementById('evidence-modal-overlay').classList.add('show');
+}
+
+function closeEvidenceModal(){
+  document.getElementById('evidence-modal-overlay').classList.remove('show');
+}
+
+(async function boot(){
+  try{
+    await initMsal();
+  }catch(e){
+    console.error('MSAL init failed', e);
+    document.getElementById('login-msg').textContent = 'เริ่มต้นระบบยืนยันตัวตนไม่สำเร็จ: ' + e.message;
+    document.getElementById('login-msg').className = 'msg err show';
+    return;
+  }
+  if(currentAccount){
+    // มี session ล็อกอินค้างอยู่แล้ว เข้าแอปได้เลยโดยไม่ต้องกดปุ่ม
+    await enterApp();
+  }
+  // ถ้ายังไม่ล็อกอิน จะค้างอยู่ที่หน้า #login-gate รอผู้ใช้กดปุ่มเข้าสู่ระบบ
+})();
+</script>
+</body>
+</html>
