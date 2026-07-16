@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@500;600;700&family=Sarabun:wght@400;500;600&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
-<script src="https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@2.38.3/lib/msal-browser.min.js"></script>
 <style>
   :root{
     --bg:#1B1E24; --surface:#242830; --surface2:#2E333D; --surface3:#363C47;
@@ -149,7 +149,7 @@
     <div class="ms-icon"><span></span><span></span><span></span><span></span></div>
     <h2>เข้าสู่ระบบด้วย Microsoft 365</h2>
     <p>ระบบนี้เก็บข้อมูลไว้บน OneDrive ของบัญชีทีมที่ใช้ร่วมกัน กรุณาเข้าสู่ระบบด้วยบัญชี Microsoft (ทีม) เพื่อใช้งาน</p>
-    <button class="action" id="login-btn" onclick="handleLoginClick()">เข้าสู่ระบบด้วย Microsoft 365</button>
+    <button class="action" id="login-btn" onclick="handleLoginClick()" disabled>กำลังเตรียมระบบ...</button>
     <div id="login-msg" class="msg"></div>
   </div>
 
@@ -1411,10 +1411,13 @@ function closeEvidenceModal(){
     await initMsal();
   }catch(e){
     console.error('MSAL init failed', e);
-    document.getElementById('login-msg').textContent = 'เริ่มต้นระบบยืนยันตัวตนไม่สำเร็จ: ' + e.message;
+    document.getElementById('login-msg').textContent = 'เริ่มต้นระบบยืนยันตัวตนไม่สำเร็จ (โหลดไลบรารีล็อกอินไม่ได้ — อาจถูกบล็อกโดยเครือข่าย): ' + e.message;
     document.getElementById('login-msg').className = 'msg err show';
     return;
   }
+  const loginBtn = document.getElementById('login-btn');
+  loginBtn.disabled = false;
+  loginBtn.textContent = 'เข้าสู่ระบบด้วย Microsoft 365';
   if(currentAccount){
     // มี session ล็อกอินค้างอยู่แล้ว เข้าแอปได้เลยโดยไม่ต้องกดปุ่ม
     await enterApp();
